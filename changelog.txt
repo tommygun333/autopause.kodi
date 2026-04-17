@@ -1,0 +1,5 @@
+v1.0.0
+- Initial release
+- Auto-pause on video start for projector display adjustment
+- Support for inputstream.adaptive stream changes (recap → main content)
+- Configurable pause duration, interval guard, and progress display
