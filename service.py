@@ -135,8 +135,10 @@ class AutoPausePlayer(xbmc.Player):
                 }))
                 data = json.loads(response)
                 path = data.get('result', {}).get('item', {}).get('file', '').lower()
-            except Exception as exc:  # noqa: BLE001
+            except (json.JSONDecodeError, KeyError, ValueError, OSError) as exc:
                 _log(f'JSON-RPC fallback failed: {exc}', xbmc.LOGWARNING)
+            except Exception as exc:  # noqa: BLE001 - catch unexpected errors
+                _log(f'JSON-RPC fallback unexpected error: {exc}', xbmc.LOGWARNING)
 
         if not path:
             return False
@@ -294,7 +296,7 @@ class AutoPauseService(xbmc.Monitor):
     def run(self):
         """Start the player listener and block until Kodi shuts down."""
         _log('Service starting')
-        player = AutoPausePlayer()  # noqa: F841 — must be kept alive
+        player = AutoPausePlayer()  # noqa: F841 - must be kept alive
 
         while not self.abortRequested():
             self.waitForAbort(1)
