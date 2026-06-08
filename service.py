@@ -51,6 +51,10 @@ class AutoPausePlayer(xbmc.Player):
         self._last_pause_time = 0.0
         # True while a pause sequence is in progress.
         self._pausing = False
+        # Set by the polling thread when it fires first, so onAVStarted can skip.
+        self._polling_triggered = False
+        # Last file seen by the polling thread; used to detect new playback.
+        self._last_polled_file = ''
 
     # ------------------------------------------------------------------
     # Kodi callback overrides
@@ -61,9 +65,18 @@ class AutoPausePlayer(xbmc.Player):
         Called by Kodi when audio/video data starts flowing.  More reliable
         than onPlayBackStarted because it fires after buffering completes.
         A fresh video start always bypasses the minimum-interval guard.
+
+        Acts as a safety-net fallback: if the polling thread already handled
+        this video start (``_polling_triggered`` is True), the callback skips
+        to avoid a double-pause attempt.  The existing ``_pausing`` mutex in
+        ``_pause_sequence`` would prevent a double-pause regardless, but this
+        avoids the unnecessary thread spawn.
         """
         _log('onAVStarted fired', xbmc.LOGDEBUG)
         with self._lock:
+            if self._polling_triggered:
+                _log('onAVStarted: polling thread already handled this start — skipping', xbmc.LOGDEBUG)
+                return
             # Reset the guard so the interval check is always skipped for a
             # brand-new video, regardless of how recently a previous pause ran.
             self._last_pause_time = 0.0
@@ -106,6 +119,8 @@ class AutoPausePlayer(xbmc.Player):
         with self._lock:
             self._last_pause_time = 0.0
             self._pausing = False
+            self._polling_triggered = False
+            self._last_polled_file = ''
 
     def _is_adaptive_stream(self):
         """
@@ -280,6 +295,56 @@ class AutoPausePlayer(xbmc.Player):
         finally:
             dialog.close()
 
+    def _poll_playback(self, monitor):
+        """
+        Background polling loop that detects new video playback independently
+        of Kodi's Python callback queue.
+
+        Polls ``isPlayingVideo()`` / ``getPlayingFile()`` every 300 ms so that
+        the pause sequence fires within 0.3 s of video start even when another
+        addon (e.g. ``script.embuary.helper``) is blocking the callback queue.
+
+        Parameters
+        ----------
+        monitor : xbmc.Monitor
+            The service's Monitor instance; used for ``waitForAbort`` so the
+            loop wakes up immediately on Kodi shutdown.
+        """
+        _log('Polling thread started', xbmc.LOGDEBUG)
+        while not monitor.abortRequested():
+            monitor.waitForAbort(0.3)
+            if monitor.abortRequested():
+                break
+
+            if self.isPlayingVideo():
+                try:
+                    current_file = self.getPlayingFile()
+                except RuntimeError:
+                    # Player is in a transitional state; try again next tick.
+                    continue
+
+                with self._lock:
+                    last_file = self._last_polled_file
+
+                if current_file != last_file:
+                    _log(f'Polling thread: new video detected — {current_file!r}', xbmc.LOGDEBUG)
+                    with self._lock:
+                        self._last_polled_file = current_file
+                        self._last_pause_time = 0.0
+                        self._polling_triggered = True
+                    self._trigger_pause(source='new_video')
+            else:
+                with self._lock:
+                    if self._last_polled_file:
+                        _log('Polling thread: video stopped — resetting state', xbmc.LOGDEBUG)
+                        self._last_polled_file = ''
+                # _reset() will be called by the onPlayBack* callbacks; the
+                # polling thread only needs to clear _last_polled_file here so
+                # the next video start is detected correctly even if the
+                # callbacks are also delayed.
+
+        _log('Polling thread stopped', xbmc.LOGDEBUG)
+
 
 class AutoPauseService(xbmc.Monitor):
     """
@@ -296,7 +361,14 @@ class AutoPauseService(xbmc.Monitor):
     def run(self):
         """Start the player listener and block until Kodi shuts down."""
         _log('Service starting')
-        player = AutoPausePlayer()  # noqa: F841 - must be kept alive
+        player = AutoPausePlayer()
+
+        poll_thread = threading.Thread(
+            target=player._poll_playback,
+            args=(self,),
+            daemon=True,
+        )
+        poll_thread.start()
 
         while not self.abortRequested():
             self.waitForAbort(1)
