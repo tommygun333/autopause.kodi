@@ -1,0 +1,26 @@
+# Kodi Media Center language file
+# Addon Name: AutoPause
+# Addon id: service.autopause
+# Addon Provider: tommygun333
+msgid ""
+msgstr ""
+
+msgctxt "#32000"
+msgid "General"
+msgstr ""
+
+msgctxt "#32001"
+msgid "Pause duration (seconds)"
+msgstr ""
+
+msgctxt "#32002"
+msgid "Min interval between pauses (seconds)"
+msgstr ""
+
+msgctxt "#32003"
+msgid "Pause on stream change (inputstream.adaptive)"
+msgstr ""
+
+msgctxt "#32004"
+msgid "Show countdown progress"
+msgstr ""

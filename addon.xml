@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="service.autopause"
+       name="AutoPause"
+       version="1.0.0"
+       provider-name="tommygun333">
+  <requires>
+    <import addon="xbmc.python" version="3.0.0"/>
+  </requires>
+  <extension point="xbmc.service" library="service.py" start="login"/>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">Auto-pause video on start for projector display adjustment</summary>
+    <description lang="en_GB">Automatically pauses video playback for a configurable number of seconds when a video starts (and optionally when an inputstream.adaptive stream changes), giving your projector time to adjust to the new resolution, dynamic range, and refresh rate before content plays.</description>
+    <platform>all</platform>
+    <license>GPL-2.0-only</license>
+    <forum/>
+    <website/>
+    <source>https://github.com/tommygun333/autopause.kodi</source>
+  </extension>
+</addon>

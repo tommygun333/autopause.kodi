@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings version="2">
+  <section id="general">
+    <category id="general" label="32000">
+      <group id="1">
+        <setting id="pause_seconds" type="number" label="32001">
+          <default>5</default>
+          <constraints>
+            <minimum>1</minimum>
+            <step>1</step>
+            <maximum>60</maximum>
+          </constraints>
+        </setting>
+        <setting id="min_interval" type="number" label="32002">
+          <default>10</default>
+          <constraints>
+            <minimum>5</minimum>
+            <step>5</step>
+            <maximum>300</maximum>
+          </constraints>
+        </setting>
+        <setting id="handle_av_change" type="bool" label="32003">
+          <default>true</default>
+        </setting>
+        <setting id="show_progress" type="bool" label="32004">
+          <default>true</default>
+        </setting>
+      </group>
+    </category>
+  </section>
+</settings>
